@@ -1,0 +1,44 @@
+name: iraq-environment-services
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: environment
+      POSTGRES_USER: environmental
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?configure in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U environmental -d environment"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://environmental:${POSTGRES_PASSWORD}@postgres:5432/environment
+      OIDC_ISSUER: ${OIDC_ISSUER:?configure OIDC issuer}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:?configure JWKS endpoint}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-environment-api}
+      OIDC_BROWSER_CLIENT_ID: ${OIDC_BROWSER_CLIENT_ID:-environment-web}
+      ALLOW_HTTP_OIDC: ${ALLOW_HTTP_OIDC:-0}
+      UPLOAD_DIR: /srv/uploads
+      VERIFIER_NOTIFICATION_EMAIL: ${VERIFIER_NOTIFICATION_EMAIL:-}
+    volumes:
+      - uploads:/srv/uploads
+    ports:
+      - "127.0.0.1:8088:8000"
+    networks: [internal]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  pgdata:
+  uploads:
+networks:
+  internal:
+    internal: false
