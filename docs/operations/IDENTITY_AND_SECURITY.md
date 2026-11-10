@@ -1,0 +1,9 @@
+# Identity / operational security prerequisites
+
+This event service **does not manage passwords or grant roles itself**. A correctly provisioned upstream OIDC provider must issue RS256 access JWTs with verified issuer, audience and expiry, plus `sub`, `realm_access.roles` (`system_admin`, `data_entry`, `verifier`, `viewer`), explicit `org_id` or `org_ids` claim and optional `email`. The API verifies signature via configured JWKS. The admin role does *not* automatically bypass organization scope. Keycloak is a **candidate**, not shipped in this increment.
+
+Before use outside isolated testing: enforce MFA for administrators, account lockout, password policy and session expiration at the IdP; bind a real Web OIDC client with Authorization Code + PKCE, exact redirect URI/origin and backend audience; validate key rotation, revocation/session invalidation, external-issuer TLS, replay prevention and outage behavior; issue organization IDs from administrator-controlled metadata; and document how MOEn consolidated visibility is authorized safely. This is not an assertion that those controls are currently satisfied.
+
+The service refuses access without valid auth, uses scoped DB filters including export and file endpoints, limits upload types/sizes, records audit entries and supports no public write API. It does not yet provide rate limiting, immutable audit log external retention, CORS policy proof, antivirus, HTTP CSP / full XSS penetration tests, security dependency scans, container scans, 20-user load tests or database-level row security. Filesystem storage is persistent only when volume is retained and must be backed up and malware-scanned before production.
+
+Do not publicly expose Docker port 8088: it binds `127.0.0.1` intentionally. TLS 1.2+ termination requires a separate approved proxy. Never put SMTP credentials, DB passwords, access tokens, or personal datasets into the repository or CI output.
